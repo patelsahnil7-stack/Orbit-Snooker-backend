@@ -38,6 +38,18 @@ CREATE TABLE IF NOT EXISTS users (
 );
 """)
 
+cur.execute("""
+CREATE TABLE IF NOT EXISTS matches (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    opponent_name VARCHAR(100) NOT NULL,
+    user_score INTEGER DEFAULT 0,
+    opponent_score INTEGER DEFAULT 0,
+    status VARCHAR(20) DEFAULT 'ongoing',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+""")
+
 conn.commit()
 
 # =========================
@@ -120,7 +132,7 @@ def user_login():
     })
 
 # =========================
-# USER PROFILE (PROTECTED)
+# USER PROFILE
 # =========================
 
 @app.route('/user-profile', methods=['GET'])
@@ -136,7 +148,58 @@ def user_profile(current_user):
     })
 
 # =========================
-# SERVER RUN
+# CREATE MATCH
+# =========================
+
+@app.route('/create-match', methods=['POST'])
+@token_required
+def create_match(current_user):
+    data = request.json
+    opponent_name = data.get('opponent_name')
+
+    cur.execute("""
+        INSERT INTO matches (user_id, opponent_name)
+        VALUES (%s, %s) RETURNING id
+    """, (current_user, opponent_name))
+
+    match_id = cur.fetchone()[0]
+    conn.commit()
+
+    return jsonify({
+        "message": "Match created",
+        "match_id": match_id
+    })
+
+# =========================
+# GET USER MATCHES
+# =========================
+
+@app.route('/my-matches', methods=['GET'])
+@token_required
+def my_matches(current_user):
+    cur.execute("""
+        SELECT id, opponent_name, user_score, opponent_score, status, created_at
+        FROM matches WHERE user_id=%s
+        ORDER BY created_at DESC
+    """, (current_user,))
+
+    matches = cur.fetchall()
+
+    result = []
+    for m in matches:
+        result.append({
+            "match_id": m[0],
+            "opponent_name": m[1],
+            "user_score": m[2],
+            "opponent_score": m[3],
+            "status": m[4],
+            "created_at": m[5]
+        })
+
+    return jsonify(result)
+
+# =========================
+# HOME
 # =========================
 
 @app.route('/')
