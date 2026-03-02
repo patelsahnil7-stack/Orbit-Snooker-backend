@@ -4,7 +4,6 @@ import psycopg2
 import bcrypt
 
 app = Flask(__name__)
-
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def get_connection():
@@ -13,7 +12,10 @@ def get_connection():
 def create_tables():
     conn = get_connection()
     cur = conn.cursor()
-
+    
+with app.app_context():
+    create_tables()
+    
     cur.execute("""
         CREATE TABLE IF NOT EXISTS admins (
             id SERIAL PRIMARY KEY,
