@@ -58,6 +58,7 @@ def create_main_admin():
 
     return jsonify({"message": "Main admin created successfully"})
 
+create_tables()
+
 if __name__ == "__main__":
-    create_tables()
     app.run()
