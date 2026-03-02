@@ -59,7 +59,40 @@ def create_main_admin():
         conn.close()
 
     return jsonify({"message": "Main admin created successfully"})
+@app.route("/admin-login", methods=["POST"])
+def admin_login():
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
 
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute(
+            "SELECT id, username, password_hash, role FROM admins WHERE username=%s AND is_active=TRUE",
+            (username,)
+        )
+        admin = cur.fetchone()
+
+        if not admin:
+            return jsonify({"error": "Invalid username or password"}), 401
+
+        admin_id, db_username, db_password_hash, role = admin
+
+        if not bcrypt.checkpw(password.encode("utf-8"), db_password_hash.encode("utf-8")):
+            return jsonify({"error": "Invalid username or password"}), 401
+
+        return jsonify({
+            "message": "Login successful",
+            "admin_id": admin_id,
+            "username": db_username,
+            "role": role
+        })
+
+    finally:
+        cur.close()
+        conn.close()
 create_tables()
 
 if __name__ == "__main__":
